@@ -16,6 +16,8 @@
 #        curl -H "Authorization: token YOUR_TOKEN" -sSLO \
 #          https://raw.githubusercontent.com/EELE14/Raspberry-Pi-Dashboard/main/install.sh
 #        sudo bash install.sh
+
+# Make sure to install only the "Server" folder!! 
 #
 #   If you accidentally downloaded a 404 page instead of this script, re-run
 #   the curl command with a valid token (option C above) and try again.
