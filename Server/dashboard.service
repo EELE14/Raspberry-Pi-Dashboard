@@ -1,0 +1,38 @@
+[Unit]
+Description=PI Server Dashboard API
+Documentation=https://github.com/your-repo
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/dashboard
+
+# Enforce strict permissions on .env before every start.
+# chmod 600 = only owner (pi) can read/write. Group and others: no access.
+ExecStartPre=/bin/chmod 600 /home/pi/dashboard/.env
+ExecStartPre=/bin/chown pi:pi /home/pi/dashboard/.env
+
+# Load environment variables from .env file
+EnvironmentFile=/home/pi/dashboard/.env
+
+# Start uvicorn from the virtual environment.
+# Single worker required — ip_ban, update_lock, and terminal session counter
+# are in-memory and not shared across processes.
+ExecStart=/home/pi/dashboard/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 1 --timeout-graceful-shutdown 30
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Logging — viewable via: journalctl -u dashboard -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dashboard
+
+[Install]
+WantedBy=multi-user.target

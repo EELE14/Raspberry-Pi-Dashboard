@@ -1,0 +1,9 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+psutil>=6.0.0
+pydantic-settings>=2.5.0
+python-dotenv>=1.0.0
+slowapi>=0.1.9
+python-multipart>=0.0.12
+aiosqlite>=0.20.0
+pyotp>=2.9.0

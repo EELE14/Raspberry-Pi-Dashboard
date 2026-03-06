@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: oklch(65% 0.18 250);
+  --color-primary-hv: oklch(60% 0.18 250);
+  --color-success: oklch(65% 0.18 145);
+  --color-danger: oklch(60% 0.22 25);
+  --color-warning: oklch(75% 0.18 80);
+  --color-surface: oklch(16% 0.01 260);
+  --color-surface-hv: oklch(20% 0.01 260);
+  --color-border: oklch(28% 0.01 260);
+  --color-muted: oklch(50% 0.01 260);
+  --color-bg: oklch(10% 0.01 260);
+
+  --font-mono: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: oklch(10% 0.01 260);
+  color: white;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(30% 0.01 260);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(38% 0.01 260);
+}
+
+.xterm {
+  height: 100%;
+}
+.xterm-viewport {
+  overflow-y: hidden !important;
+}
