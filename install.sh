@@ -5,12 +5,22 @@
 # Two ways to run this:
 #
 #   A) Already cloned the repo:
-#        cd pi-server
+#        cd pi-backend
 #        sudo bash install.sh
 #
-#   B) Fresh install (script downloads and clones the repo itself):
-#        curl -sSLO https://raw.githubusercontent.com/yourname/pi-server/main/install.sh
+#   B) Fresh install — public repo:
+#        curl -sSLO https://raw.githubusercontent.com/EELE14/Raspberry-Pi-Dashboard/main/install.sh
 #        sudo bash install.sh
+#
+#   C) Fresh install — private repo (GitHub access token required):
+#        curl -H "Authorization: token YOUR_TOKEN" -sSLO \
+#          https://raw.githubusercontent.com/EELE14/Raspberry-Pi-Dashboard/main/install.sh
+#        sudo bash install.sh
+
+# Make sure to install only the "Server" folder!! 
+#
+#   If you accidentally downloaded a 404 page instead of this script, re-run
+#   the curl command with a valid token (option C above) and try again.
 #
 # What this script does:
 #   1. Checks prerequisites (Python 3.8+, git)
@@ -71,12 +81,12 @@ ok "git $(git --version | awk '{print $3}')"
 # ── Locate or clone the repository ───────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-SERVER_DIR="$REPO_ROOT/Server"
+SERVER_DIR="$REPO_ROOT"
 
-if [[ ! -d "$SERVER_DIR" ]] || [[ ! -f "$SERVER_DIR/requirements.txt" ]]; then
+if [[ ! -f "$SERVER_DIR/requirements.txt" ]]; then
   section "Repository Setup"
 
-  echo "Server/ directory not found — the repository needs to be cloned first."
+  echo "requirements.txt not found — the repository needs to be cloned first."
   echo ""
 
   # Current user (for default install path)
@@ -84,22 +94,9 @@ if [[ ! -d "$SERVER_DIR" ]] || [[ ! -f "$SERVER_DIR/requirements.txt" ]]; then
   DEFAULT_USER_HOME=$(eval echo "~$DEFAULT_USER")
   DEFAULT_CLONE_DIR="$DEFAULT_USER_HOME/pi-server"
 
-  read -rp "  Repository URL  (e.g. https://github.com/yourname/pi-server): " REPO_URL
-  REPO_URL="${REPO_URL:-}"
-  [[ -n "$REPO_URL" ]] || die "Repository URL is required."
-
-  read -rp "  Private repository? Needs an access token  [y/N]: " IS_PRIVATE
-  IS_PRIVATE="${IS_PRIVATE:-n}"
-
-  CLONE_TOKEN=""
-  if [[ "${IS_PRIVATE,,}" == "y" ]]; then
-    echo ""
-    echo "  Enter your GitHub/GitLab personal access token."
-    echo "  It will only be used for the git clone command and is not stored anywhere."
-    read -rsp "  Access token: " CLONE_TOKEN
-    echo ""
-    [[ -n "$CLONE_TOKEN" ]] || die "Access token is required for a private repository."
-  fi
+  DEFAULT_REPO_URL="https://github.com/EELE14/Raspberry-Pi-Dashboard"
+  read -rp "  Repository URL  [${DEFAULT_REPO_URL}]: " REPO_URL
+  REPO_URL="${REPO_URL:-$DEFAULT_REPO_URL}"
 
   read -rp "  Install directory  [${DEFAULT_CLONE_DIR}]: " INPUT_CLONE_DIR
   CLONE_DIR="${INPUT_CLONE_DIR:-$DEFAULT_CLONE_DIR}"
@@ -108,38 +105,51 @@ if [[ ! -d "$SERVER_DIR" ]] || [[ ! -f "$SERVER_DIR/requirements.txt" ]]; then
     die "Directory already exists: $CLONE_DIR. Remove it first or choose a different path."
   fi
 
-  # Build the authenticated URL if a token was provided
-  CLONE_URL="$REPO_URL"
-  if [[ -n "$CLONE_TOKEN" ]]; then
-    # Inject token into HTTPS URL: https://x-access-token:TOKEN@github.com/...
-    if [[ "$REPO_URL" == https://* ]]; then
-      CLONE_URL="${REPO_URL/https:\/\//https://x-access-token:${CLONE_TOKEN}@}"
+  # Helper: run git clone as the correct user (not root)
+  _do_clone() {
+    local url="$1" dir="$2"
+    if [[ "$(id -u)" -eq 0 ]] && [[ -n "${SUDO_USER:-}" ]]; then
+      sudo -u "$SUDO_USER" git clone "$url" "$dir" 2>&1
     else
+      git clone "$url" "$dir" 2>&1
+    fi
+  }
+
+  # First attempt — no token (works for public repos)
+  info "Cloning repository into $CLONE_DIR …"
+  if ! _do_clone "$REPO_URL" "$CLONE_DIR" >/dev/null 2>&1; then
+    # Clone failed — could be a private repo or wrong URL.
+    # Suppress the first error and offer a token retry.
+    echo ""
+    warn "Clone failed. This usually means the repository is private or the URL is wrong."
+    echo ""
+    echo "  Enter a GitHub personal access token to retry, or press Enter to abort."
+    echo "  The token is only used for this clone and is never stored."
+    read -rsp "  Access token: " CLONE_TOKEN
+    echo ""
+
+    if [[ -z "$CLONE_TOKEN" ]]; then
+      die "Clone failed and no token provided. Check the URL and try again."
+    fi
+
+    if [[ "$REPO_URL" != https://* ]]; then
       die "Token authentication only works with HTTPS URLs (https://...)."
     fi
-  fi
 
-  info "Cloning repository into $CLONE_DIR …"
-  # Run clone as the install user (not root) to avoid root-owned files
-  if [[ "$(id -u)" -eq 0 ]] && [[ -n "${SUDO_USER:-}" ]]; then
-    sudo -u "$SUDO_USER" git clone "$CLONE_URL" "$CLONE_DIR" \
-      || die "git clone failed. Check the URL and token."
-  else
-    git clone "$CLONE_URL" "$CLONE_DIR" \
-      || die "git clone failed. Check the URL and token."
-  fi
+    AUTH_URL="${REPO_URL/https:\/\//https://x-access-token:${CLONE_TOKEN}@}"
+    _do_clone "$AUTH_URL" "$CLONE_DIR" \
+      || die "Clone failed even with the provided token. Check the URL and token."
 
-  # Clear the token from memory as early as possible
-  CLONE_TOKEN=""
-  CLONE_URL=""
+    # Clear secrets immediately
+    CLONE_TOKEN=""
+    AUTH_URL=""
+  fi
 
   ok "Repository cloned to $CLONE_DIR"
 
-  REPO_ROOT="$CLONE_DIR"
-  SERVER_DIR="$REPO_ROOT/Server"
+  SERVER_DIR="$CLONE_DIR"
 
-  [[ -d "$SERVER_DIR" ]]                  || die "Cloned repository is missing Server/ directory."
-  [[ -f "$SERVER_DIR/requirements.txt" ]] || die "Cloned repository is missing Server/requirements.txt."
+  [[ -f "$SERVER_DIR/requirements.txt" ]] || die "Cloned repository is missing requirements.txt."
 
   # Move the installer into the cloned repo so relative paths work for the rest
   # of this script (SCRIPT_DIR is now outdated; we use SERVER_DIR directly).
@@ -159,8 +169,8 @@ INSTALL_USER="${INPUT_USER:-$DEFAULT_USER}"
 id "$INSTALL_USER" >/dev/null 2>&1 || die "User '$INSTALL_USER' does not exist."
 INSTALL_HOME=$(eval echo "~$INSTALL_USER")
 
-# Frontend domain
-read -rp "  Frontend domain (CORS origin, e.g. https://dash.example.com): " CORS_ORIGIN
+# Frontend domain(s)
+read -rp "  Frontend domain(s) — comma-separated (e.g. https://dash.example.com): " CORS_ORIGIN
 CORS_ORIGIN="${CORS_ORIGIN:-}"
 if [[ -z "$CORS_ORIGIN" ]]; then
   warn "No frontend domain entered. You can edit Server/.env later (CORS_ORIGINS)."
