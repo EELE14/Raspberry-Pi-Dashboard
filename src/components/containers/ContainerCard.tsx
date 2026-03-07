@@ -214,7 +214,7 @@ export default function ContainerCard({
   const logsEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Auto-scroll logs to bottom when new lines arrive
+  // scroll logs to bottom when new lines arrive
   useEffect(() => {
     if (logsOpen) logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logLines, logsOpen]);
