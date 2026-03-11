@@ -224,24 +224,6 @@ sudo systemctl restart dashboard
 
 ---
 
-## Development Setup
-
-For local development on macOS/Linux without a Raspberry Pi:
-
-```bash
-# Backend (mock systemd, no sudo needed)
-cd Server
-source .venv/bin/activate
-./dev_start.sh
-
-# Frontend (in another terminal)
-npm run dev
-```
-
-See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for full details.
-
----
-
 ## Troubleshooting
 
 **Service won't start**
